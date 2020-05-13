@@ -1,0 +1,15 @@
+test_iter: 256
+test_interval: 960
+base_lr: 0.0001
+display: 64
+max_iter: 9600
+lr_policy: "fixed"
+momentum: 0.9
+weight_decay: 0.0002
+snapshot: 960
+snapshot_prefix: "distance"
+solver_mode: GPU
+net: "distance_network.prototxt"
+test_initialization: true
+average_loss: 64
+type: "Adam"
