@@ -1,0 +1,169 @@
+.btn {
+    background-color: rgb(102, 153, 255);
+}
+
+#content {
+    height: 100%;
+}
+
+#inputCanvas {
+    border: 2px solid rgb(102, 153, 255);
+}
+
+#sendButton {
+    margin: 3px;
+}
+
+.slidecontainer {
+    margin: 4px;
+}
+
+#control-panel {
+    border-radius: 8px;
+    background: #d6d6d6;
+    width: 700px;
+    font-size: 12px;
+    padding: 6px;
+}
+
+#footer {
+    margin-top: 100px;
+    position: relative;
+    bottom: 5px;
+}
+
+.body, .html {
+    height: 100%;
+}
+
+#contours {
+    display: none;
+}
+
+.loader {
+    border: 16px solid #f3f3f3;
+    border-radius: 50%;
+    border-top: 16px solid #db7c34;
+    -webkit-animation: spin 2s linear infinite; /* Safari */
+    animation: spin 2s linear infinite;
+     width: 200px;
+    height: 200px;
+}
+#message{
+    width: 400px;
+    position: relative;
+    left: -92px;
+    font-size: 21px;
+    text-align: center;
+}
+.loader-container {
+    position: fixed;
+    left: 45%;
+    top: 35%;
+
+}
+
+@-webkit-keyframes spin {
+    0% {
+        -webkit-transform: rotate(0deg);
+    }
+    100% {
+        -webkit-transform: rotate(360deg);
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.feature {
+    fill-opacity: 0
+}
+
+.feature.showClasses {
+    fill-opacity: 1 !important
+}
+
+.feature.active {
+    fill: rgba(45, 26, 255, 0.66);
+    fill-opacity: 1
+}
+
+.mesh {
+    fill: none;
+    stroke: #fff;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.header-panel {
+    background: #39478c;
+    vertical-align: middle;
+    font-size: 18px;
+}
+
+.classification-water {
+    padding: 6px;
+    margin: 3px;
+    border-radius: 8px;
+    background: #3e6ee7;
+    color: white;
+    font-weight: bold;
+
+}
+
+
+body, html {
+    height: 100%;
+    overflow: hidden;
+    font-size: 14px;
+}
+
+#map-row {
+    overflow: auto;
+    height: calc(100% - 50px);
+    width: 100%;
+    border: 3px #ffa000;
+    margin: 0;
+}
+
+
+.badge-map {
+    padding: 6px;
+    background: #86b9ff;
+    border-radius: 6px;
+    margin: 3px;
+    font-weight: bold;
+    cursor: pointer;
+    border: 1px solid transparent;
+    width: 32px;
+    text-align: center;
+    display: inline-table;
+}
+
+.badge-show-info {
+    width: auto;
+    background: #0e4890;
+    color: white;
+    margin: 8px;
+}
+
+.badge-map:hover {
+    background: #bddcff;
+    border: 1px solid #9a9595;
+}
+
+.badge-map.clicked {
+    background: #ffb967;
+    border: 1px solid #726e6e;
+}
+
+
+#map2 svg {
+    overflow: initial;
+}

@@ -1,0 +1,263 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block head %}
+{{ super() }}
+{% endblock %}
+{% block content %}
+<div class="header-panel row no-gutters">
+
+</div>
+<div id="div_customContent"></div>
+<div class="row no-gutters" id="map-row">
+
+
+    <div class="col no-gutters" id="map2">
+
+    </div>
+</div>
+
+{% endblock %}
+
+{% block init %}
+<script>
+    class Vector {
+        Vector() {
+        }
+
+        init() {
+            console.log('run')
+            let $col = $('<div class="col"></div>');
+            $col.append('<span><label class="badge-show-info float-right"><input type="checkbox" id="show-info-cbx"> info </label></span>');
+            $col.append('<span><label class="badge-show-info float-right"><input type="checkbox" id="show-contours-cbx"> class </label></span>');
+            $.ajax({
+                url: '/get_vector',
+                data: {uuid: '{{uuid}}'},
+                type: 'get',
+                datatype: "application/json",
+                success: function (response) {
+                    var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(response['qgis']));
+                    $col.append('<span><a style="color: #ffffff" href=' + dataStr + ' download="vectorGeoJson.geoJson"> Download GeoJSON </a>  </span>');
+                    this.showMap(response['web'])
+                }.bind(this)
+            });
+            $('.header-panel').append($col);
+        }
+
+        myGenerator = function (feature) {
+            if (feature.geometry.coordinates.length > 1) {
+                let svgString = 'M'
+                feature.geometry.coordinates[0].forEach((c, i) => {
+                    if (i === feature.geometry.coordinates[0].length - 1) {
+                        svgString += c.join(',') + 'Z'
+                    } else {
+                        svgString += c.join(',') + 'L'
+                    }
+                })
+                svgString += 'M'
+                feature.geometry.coordinates[1].reverse().forEach((c, i) => {
+                    if (i === feature.geometry.coordinates[0].length - 1) {
+                        svgString += c.join(',') + 'Z'
+                    } else {
+                        svgString += c.join(',') + 'L'
+                    }
+                })
+            } else {
+                if (feature.geometry.coordinates[0].length > 2) {
+                    let svgString = 'M'
+                    feature.geometry.coordinates[0].forEach((c, i) => {
+                        if (i === feature.geometry.coordinates[0].length - 1) {
+                            svgString += c.join(',') + 'Z'
+                        } else {
+                            svgString += c.join(',') + 'L'
+                        }
+                    })
+                    return svgString
+                }
+                return ''
+            }
+
+        }
+
+        showMap(data) {
+            var width = 150
+            var scaleFactor = 300
+            var barHeight = 20
+            $('#map2').empty();
+
+            let tooltip2 = d3.select('#div_customContent')
+                .append('div')
+                .style('position', 'absolute')
+                .style('opacity', 0.8)
+                .style('visibility', 'hidden')
+                .style('background-color', 'white')
+                .style('border', 'solid')
+                .style('border-width', '1px')
+                .style('border-radius', '5px')
+                .style('padding', '10px')
+                .style('z-index', '50')
+
+
+            d3.select('#map2').append('svg').append('image').attr('xlink:href', '/static/temp/{{uuid}}_img.png');
+            let zoom = d3.zoom().on('zoom', this.zoomed);
+
+            d3.select('#map2').transition()
+                .duration(750)
+                .call(zoom.transform, d3.zoomIdentity);
+
+            this.svg = d3.select('#map2').select('svg').append('g')
+                .selectAll('path').data(data.features)
+                .enter().append('path')
+                .attr('fill', f => f.properties['fill'])
+                .attr('stroke-width', '2')
+                .classed('feature', true)
+                .attr('stroke', 'black')
+                .attr('d', feature => this.myGenerator(feature))
+                .on('mouseover', function (d) {
+                    d3.select(this)
+                        .classed('active', true);
+                    console.log(d);
+                    if ($('#show-info-cbx').is(':checked')) {
+                        tooltip2.style('visibility', 'visible');
+                        let c = d.properties.type && d.properties.type.length > 0 ? " class=\"classification-water\" " : "";
+                        let t = d.properties.type ? d.properties.type : "unknown";
+                        let prob = d.properties.probability
+
+                        if (prob) {
+                            tooltip2.html('<strong>' + d.type + '</strong><br>' +
+                                '<span>Type: </span ><span>' + d.geometry.type + '</span><br>' +
+                                '<span>No. of points: </span> <span>' + d.geometry.coordinates[0].length + '</span><br>' +
+                                '<span>Class: </span><span><div style="display: inline-block" ' + c + ' >' + t + ' </div></span> <br>' +
+                                '<div id="porbaGraph"></div> <br>');
+
+                            let svg = d3.select('#porbaGraph')
+                                .append('svg')
+                                .attr('width', width)
+                                .attr('height', 60);
+
+                            let g = svg.append('g');
+                            g.append('rect')
+                                .attr('width', prob.background * scaleFactor)
+                                .attr('height', barHeight - 1).attr('fill', ' gray');
+
+                            g.append('text').text('background ' + parseInt(prob.background * 100) + '%').attr('y', '15').attr('font-weight', 800);
+
+                            let g2 = svg.append('g').attr('transform', 'translate(0,' + barHeight + ')');
+                            g2.append('rect')
+                                .attr('width', prob.water * scaleFactor)
+                                .attr('height', barHeight - 1)
+                                .attr('fill', '#4ad2f5');
+
+                            g2.append('text').text('water ' + parseInt(prob.water * 100) + '%').attr('y', '15').attr('font-weight', 800);
+
+                            let g3 = svg.append('g').attr('transform', 'translate(0,' + 2 * barHeight + ')');
+                            g3.append('rect')
+                                .attr('width', prob.building * scaleFactor)
+                                .attr('height', barHeight - 1).attr('fill', '#ff7fcc');
+                            g3.append('text').text('building ' + parseInt(prob.building * 100) + '%').attr('y', '15').attr('font-weight', 800);
+
+                        }
+                    }
+
+                }).on('mouseout', function (d) {
+                    d3.select(this)
+                        .classed('active', false);
+                    tooltip2.style('visibility', 'hidden');
+                }).on('mousemove', function (d) {
+                    tooltip2.style('top', (d3.event.pageY + 40) + 'px').style('left', (d3.event.pageX + 40) + 'px');
+                });
+
+
+            data.features.forEach(f => {
+                f.geometry.coordinates[0].forEach(x => this.showPoint(x, tooltip2, 0.3))
+            })
+
+
+            d3.select('body').on('keydown', function (d) {
+                let k = d3.event.key;
+                let reg = /^\d+$/.test(k)
+                if (k === 't') { // transparent
+                    let osp = d3.select('#map2').select('svg')
+                        .selectAll('path').attr('stroke-width');
+                    if (parseFloat(osp) > 0) {
+                        d3.select('#map2').select('svg')
+                            .selectAll('path').attr('stroke-width', 0);
+                        d3.select('#map2').select('svg')
+                            .selectAll('path').attr('opacity', 0.3);
+
+                    } else {
+                        d3.select('#map2').select('svg')
+                            .selectAll('path').attr('stroke-width', 0.1);
+                        d3.select('#map2').select('svg')
+                            .selectAll('path').attr('opacity', 1);
+
+                    }
+                } else if (k === 'r') { // hide background
+                    let op = parseFloat(d3.select('#map2').select('svg').select('image').attr('opacity'));
+                    if (op > 0.6) parseFloat(d3.select('#map2').select('svg').select('image').attr('opacity', 0.2));
+                    else parseFloat(d3.select('#map2').select('svg').select('image').attr('opacity', 1));
+
+                } else if (k === 'x') { // hide points
+                    let op = d3.select('#map2').select('svg').select('g').select('circle').attr('opacity')
+                    if (op != 1) d3.select('#map2').select('svg').select('g').selectAll('circle').attr('opacity', 1)
+                    else d3.select('#map2').select('svg').select('g').selectAll('circle').attr('opacity', 0)
+
+                } else if (k === '1') {
+                    d3.select('#map2').select('svg')
+                        .selectAll('path').attr('stroke-width', parseInt(1));
+                } else if (k === '2') {
+                    d3.select('#map2').select('svg')
+                        .selectAll('path').attr('stroke-width', parseInt(2));
+                } else if (k === '3') {
+                    d3.select('#map2').select('svg')
+                        .selectAll('path').attr('stroke-width', parseInt(3));
+                }
+            });
+
+            //
+            d3.select('#map2').call(zoom);
+
+            // this.showStreet(data, 'black', 3, false);
+
+            $('#show-contours-cbx').unbind()
+            $('#show-contours-cbx').prop('checked', false)
+            $('#show-contours-cbx').click(() => {
+                if ($('.feature').hasClass('showClasses'))
+                    $('.feature').removeClass('showClasses')
+                else
+                    $('.feature').addClass('showClasses')
+            })
+
+        };
+
+        showPoint(point, tooltip2, size, color = 'red') {
+
+            d3.select('#map2').select('svg').select('g').append('circle')
+                .attr('cx', point[0])
+                .attr('cy', point[1])
+                .attr('r', size + 'px')
+                .attr('fill', color)
+                .on('mouseover', (d) => {
+                    console.log(d);
+                    if ($('#show-info-cbx').is(':checked')) {
+                        tooltip2.style('visibility', 'visible');
+                        tooltip2.html('<strong>Point </strong><br><span>x :' + point[0] + '  y :' + point[1] + ' </span>');
+                    }
+                })
+                .on('mouseout', (d) => {
+                    tooltip2.style('visibility', 'hidden');
+                });
+        }
+
+        zoomed() {
+            d3.select('#map2').select('svg').attr('transform', d3.event.transform);
+        }
+
+    }
+
+    window.vector = new Vector();
+    $(window).on('load', function () {
+        window.vector.init();
+    });
+</script>
+{% endblock %}
+

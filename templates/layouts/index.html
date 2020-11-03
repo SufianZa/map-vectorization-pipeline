@@ -1,0 +1,76 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block head %}
+{{ super() }}
+{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-auto"><h1>{{ title}}</h1></div>
+    <div class="col-12">
+        <div class="row justify-content-center">
+            <div class="col-auto">
+                <img src="/static/img/cadastral.PNG" style="width: 400px"><br>
+                <i>The 3d-representation was generated using
+                    QGIS.</i></div>
+        </div>
+    </div>
+</div>
+<br/><br/>
+<div class="row justify-content-center">
+    <div class="col-auto" id="control-panel">
+        <form method="post" enctype="multipart/form-data" action="/generate">
+            <div class="col-12 form-inline">
+                <div class="slidecontainer">
+                <span><i>Contours sensitivity</i> &nbsp;&nbsp;
+                <input type="range" style="width: 100px; display: inline-block;"
+                       name="sensitivity" step="0.01" min="0.08"
+                       max="0.35"
+                       value="0.15" id="updateSensitivity">
+                &nbsp;&nbsp;
+                <span id="updateSensitivitySpan"></span></span>
+                </div>
+            </div>
+
+            <div class="col-12 form-inline">
+                <div class="slidecontainer">
+                <span><i>Douglas-Peucker  </i> &nbsp;&nbsp;
+                <input type="range" style="width: 100px; display: inline-block;"
+                       name="douglas" step="0.01" min="2"
+                       max="15"
+                       value="4" id="updateDouglas">&nbsp;&nbsp;
+                <span id="updateDouglasSpan"></span></span>
+                </div>
+            </div>
+            <br><br>
+            <div class="col-12"><i>Remove Gaps: </i></div>
+            <div class="col-12 form-inline">
+                <label>
+                    <input type="radio" id="diff-enlarge" name="close-gaps" value="1" class="m-4">
+                    <i>Difference with enlarged polygons</i>
+                </label>
+                <label id="contours">
+                    <input type="number" value="2.85" step="0.01" name="param1" class="form-control m-2"
+                           style="width: 80px">
+                    <i> Enlarge factor</i> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    <input type="checkbox" name="contours" checked> <i>Extract contours</i>
+                </label>
+            </div>
+            <div class="col-12 form-inline">
+                <label>
+                    <input type="radio" id="polysnap" name="close-gaps" value="2" class="m-4" checked>
+                    <i>Snapping Polygons </i>
+                </label>
+                <label id="distance">
+                    <input type="number" name="param2" value="4" class="form-control m-2" style="width: 80px">
+                    <i> distance in px</i>
+                </label>
+            </div>
+            <br>
+            <br>
+            <input id="raster" name="file" type="file" data-toggle="tooltip" data-placement="top"
+                   title="supported formats: png"/><span> <sub>Upload png format raster cadastral map</sub></span>
+            <button id="sendButton" type="submit" class="btn btn-primary">Vektorisieren</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

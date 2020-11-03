@@ -1,0 +1,35 @@
+{% extends "layouts/base.html" %}
+{% block title %}{{title}}{% endblock %}
+{% block head %}
+{{ super() }}
+{% endblock %}
+{% block content %}
+<div class="loader-container">
+    <div class="loader"></div>
+    <div id="message"></div>
+</div>
+
+<script>
+    let req = false
+    let check = function () {
+        if (!req) {
+            req = true
+            $.ajax({
+                url: '/finished',
+                data: {uuid: '{{uuid}}'},
+                type: 'get',
+                datatype: "application/json",
+                success: function (response) {
+                    $('#message').text(response.msg)
+                    if (response.ok === false) {
+                        req = false
+                    } else if (response.ok === true) {
+                        window.location.href = window.location.href + '/map?uuid={{uuid}}'
+                    }
+                }
+            });
+        }
+    }
+    setInterval(check, 1000 * 4);
+</script>
+{% endblock %}
