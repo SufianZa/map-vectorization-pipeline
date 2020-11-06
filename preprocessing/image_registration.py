@@ -50,9 +50,9 @@ def register_images(moving_image, fixed_image):
     """
     This method apply the image registration of tow similar images by using their silhouette to detect
     their most outer common features
-    moving_image: ndarray
+    :param moving_image: ndarray
         the image to be transformed using affine transformation
-    fixed_image: ndarray
+    :param fixed_image: ndarray
         the image to be transformed using affine transformation
     """
     print("Aligning images ...", end=" ")

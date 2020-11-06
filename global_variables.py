@@ -1,6 +1,6 @@
 """
-This code outline global parameters such as paths for the pipeline modules, which also contains classes
-and their corresponding colors given in the dataset
+This code outlines global parameters such as paths for the pipeline modules, target classes,
+pre-defined colors and features
 """
 import functools
 import operator
@@ -15,7 +15,7 @@ abs_path = Path(__file__).parent
 train_full_maps = Path(abs_path, 'dataset', 'train_maps')
 
 # full input vectorized maps
-vector_full_images = Path(abs_path, 'dataset', 'corrected')
+vector_full_images = Path(abs_path, 'dataset', 'vector_images')
 
 # maps excluded from the training to use for testing
 test_full_maps = Path(abs_path, 'dataset', 'test_maps')
@@ -78,10 +78,10 @@ spectral_shape_features_name = np.array(['$Median_{h}$', '$Median_{s}$', '$Media
                                          'convexity',
                                          'relative_area'])
 
-# the array that includes and/concludes features
+# the array that includes/concludes features
 cherry_pick_features = np.arange(len(spectral_shape_features_name))
 
-# the indices of the spectral and shape features
+# the indices of all the spectral and shape features extracted
 spectral_index = np.arange(0, 15)
 shape_index = np.arange(15, len(spectral_shape_features_name))
 

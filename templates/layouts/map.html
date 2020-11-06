@@ -25,7 +25,6 @@
         }
 
         init() {
-            console.log('run')
             let $col = $('<div class="col"></div>');
             $col.append('<span><label class="badge-show-info float-right"><input type="checkbox" id="show-info-cbx"> info </label></span>');
             $col.append('<span><label class="badge-show-info float-right"><input type="checkbox" id="show-contours-cbx"> class </label></span>');
@@ -115,7 +114,6 @@
                 .on('mouseover', function (d) {
                     d3.select(this)
                         .classed('active', true);
-                    console.log(d);
                     if ($('#show-info-cbx').is(':checked')) {
                         tooltip2.style('visibility', 'visible');
                         let c = d.properties.type && d.properties.type.length > 0 ? " class=\"classification-water\" " : "";
@@ -230,14 +228,12 @@
         };
 
         showPoint(point, tooltip2, size, color = 'red') {
-
             d3.select('#map2').select('svg').select('g').append('circle')
                 .attr('cx', point[0])
                 .attr('cy', point[1])
                 .attr('r', size + 'px')
                 .attr('fill', color)
                 .on('mouseover', (d) => {
-                    console.log(d);
                     if ($('#show-info-cbx').is(':checked')) {
                         tooltip2.style('visibility', 'visible');
                         tooltip2.html('<strong>Point </strong><br><span>x :' + point[0] + '  y :' + point[1] + ' </span>');

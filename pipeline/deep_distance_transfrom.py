@@ -14,9 +14,19 @@ from tensorflow.keras.layers import Input, Activation, Conv2D, MaxPooling2D, UpS
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 import cv2
 import os
-from utlis import addPadding, removePadding
 import datetime, os
 import global_variables
+
+
+def addPadding(image, top=0, bottom=0, left=0, right=0, a=0):
+    image = cv2.copyMakeBorder(image.copy(), top + a, bottom + a, left + a, right + a, cv2.BORDER_CONSTANT, 255)
+    image[image == 0] = 255
+    return image
+
+
+def removePadding(image, top=0, bottom=0, left=0, right=0, a=0):
+    w, h = image.shape
+    return image.copy()[left + a:w - bottom - a, top + a:h - right - a]
 
 
 class DeepDistanceTransform:
@@ -35,17 +45,17 @@ class DeepDistanceTransform:
         which takes the input_size as initial size of the Input layer
         """
         inputs = Input(input_size)
-        skip1, pool1 = self.encode(inputs, 16, drop=0.1)  # 128 -> 64
-        skip2, pool2 = self.encode(pool1, 32, drop=0.1)  # 128 -> 64
-        skip3, pool3 = self.encode(pool2, 64, drop=0.2)  # 64 -> 32
-        skip4, pool4 = self.encode(pool3, 128, drop=0.2)  # 32 -> 16
-        skip5, pool5 = self.encode(pool4, 256, drop=0.3)  # 16 -> 8
+        skip1, pool1 = self.encode(inputs, 16, drop=0.1)
+        skip2, pool2 = self.encode(pool1, 32, drop=0.1)
+        skip3, pool3 = self.encode(pool2, 64, drop=0.2)
+        skip4, pool4 = self.encode(pool3, 128, drop=0.2)
+        skip5, pool5 = self.encode(pool4, 256, drop=0.3)
         bottleneck = self.bottleneck(pool5, 512)
-        deConv1 = self.decode(bottleneck, skip5, 256, strides=2, drop=0.3)  # 8 -> 16
-        deConv2 = self.decode(deConv1, skip4, 128, strides=2, drop=0.3)  # 16 -> 32
-        deConv3 = self.decode(deConv2, skip3, 64, strides=2, drop=0.3)  # 32 -> 64
-        deConv4 = self.decode(deConv3, skip2, 32, strides=2, drop=0.2)  # 64 -> 128
-        deConv5 = self.decode(deConv4, skip1, 16, strides=2, drop=0.1)  # 64 -> 128
+        deConv1 = self.decode(bottleneck, skip5, 256, strides=2, drop=0.3)
+        deConv2 = self.decode(deConv1, skip4, 128, strides=2, drop=0.3)
+        deConv3 = self.decode(deConv2, skip3, 64, strides=2, drop=0.3)
+        deConv4 = self.decode(deConv3, skip2, 32, strides=2, drop=0.2)
+        deConv5 = self.decode(deConv4, skip1, 16, strides=2, drop=0.1)
         outputs = Conv2D(1, (1, 1), padding="same", activation="sigmoid")(deConv5)
         return Model(inputs=inputs, outputs=[outputs])
 
@@ -118,7 +128,8 @@ class DeepDistanceTransform:
 
     def test(self):
         """
-            Tests the model on the test images in the pre-defined pth in global variables
+            Tests the model on the test images in the pre-defined paths in global variables
+            then plots a comparision of the prediction and ground truth patches
         """
         x = []
         y = []
@@ -155,11 +166,13 @@ class DeepDistanceTransform:
     def estimate_full_map(self, input_map, trim=60):
         """
          Estimates the full map image by sliding a window over and
-           trimming off sides o from each side of 256*256 batch e.g. 100 -> adds only the middle 56*56 square of the 256*256 batch
-            to the result
-        :param input_map:
+           trimming off sides from each side of 256*256 batch
+           e.g. 100 -> adds only the middle 56*56 square of the 256*256 batch to the result.
+           The trimming is used to avoid creases and artifacts that affect the watershed segmentation
+        :param input_map: ndarray
+            image of cadastral map
         :param trim: int
-            defines the smoothness in terms of the size of trimmed prediction of each window
+            the number of pixels trimmed of each side of the predicted window
         """
         w, h, _ = input_map.shape
         stepSize = self.window_size - trim * 2
@@ -181,13 +194,15 @@ class DeepDistanceTransform:
         res = removePadding(res, bottom=pad_bottom, right=pad_right, a=trim * 2)
         assert res.shape[0] == w and res.shape[1] == h
         print(res.shape[0], res.shape[1])
+
         plt.imshow(res, cmap='gray')
         plt.show()
+
         out_im = Image.fromarray(res)
         return np.array(out_im)
 
 
 if __name__ == '__main__':
     model = DeepDistanceTransform(batch_size=24, epochs=50)
-    image = np.array(Image.open('X:\map-vectorization-pipeline\dataset\\test_maps\\5.tif'))[:, :, :3]
+    image = np.array(Image.open(Path(global_variables.test_full_maps, '5.tif')))[:, :, :3]
     model.estimate_full_map(image, trim=50)

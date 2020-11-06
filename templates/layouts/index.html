@@ -5,17 +5,16 @@
 {% endblock %}
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-auto"><h1>{{ title}}</h1></div>
+    <div class="col-auto text-center"><h1>{{ title}}</h1></div>
     <div class="col-12">
         <div class="row justify-content-center">
             <div class="col-auto">
-                <img src="/static/img/cadastral.PNG" style="width: 400px"><br>
-                <i>The 3d-representation was generated using
-                    QGIS.</i></div>
+                <img src="/static/img/cadastral.PNG" style="width: 499px"><br>
+                <i><sub>The 3d-representation was generated using
+                    <a href="https://qgis.org/en/site/"> QGIS</a> .</sub></i></div>
         </div>
     </div>
 </div>
-<br/><br/>
 <div class="row justify-content-center">
     <div class="col-auto" id="control-panel">
         <form method="post" enctype="multipart/form-data" action="/generate">
@@ -42,7 +41,7 @@
                 </div>
             </div>
             <br><br>
-            <div class="col-12"><i>Remove Gaps: </i></div>
+            <div class="col-12"><i>Removing the Gaps method: </i></div>
             <div class="col-12 form-inline">
                 <label>
                     <input type="radio" id="diff-enlarge" name="close-gaps" value="1" class="m-4">
@@ -58,7 +57,7 @@
             <div class="col-12 form-inline">
                 <label>
                     <input type="radio" id="polysnap" name="close-gaps" value="2" class="m-4" checked>
-                    <i>Snapping Polygons </i>
+                    <i> Polygons Snapping </i>
                 </label>
                 <label id="distance">
                     <input type="number" name="param2" value="4" class="form-control m-2" style="width: 80px">
@@ -66,10 +65,17 @@
                 </label>
             </div>
             <br>
-            <br>
-            <input id="raster" name="file" type="file" data-toggle="tooltip" data-placement="top"
-                   title="supported formats: png"/><span> <sub>Upload png format raster cadastral map</sub></span>
-            <button id="sendButton" type="submit" class="btn btn-primary">Vektorisieren</button>
+
+            <div class="col-10">
+                <div><small>Upload <strong>PNG</strong> format </small></div>
+                <input id="raster" name="file" type="file" data-toggle="tooltip" data-placement="top"
+                       title="supported formats: png"/>
+
+            </div>
+            <div class="col-auto float-right">
+                <button id="sendButton" type="submit" class="btn btn-primary">Vektorisieren</button>
+            </div>
+
         </form>
     </div>
 </div>

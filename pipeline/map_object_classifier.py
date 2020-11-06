@@ -14,7 +14,6 @@ from sklearn.metrics import classification_report
 import seaborn as sns
 import global_variables
 import enum
-
 from pipeline.feature_extraction import FeaturesType, FeatureExtractor
 
 
@@ -27,8 +26,8 @@ class MapObjectsClassifier:
     def __init__(self, features=FeaturesType.SPECTRAL_SHAPE, model=Models.RANDOMFOREST):
         self.featuresType = features
         self.extracted_features_path = Path(global_variables.weights_path, 'features.pkl')
-        self.features_list = np.array(features.get_selected_features())
-        self.featureExtractor = FeatureExtractor(self.features_list, self.extracted_features_path)
+        self.selected_features_list = np.array(features.get_selected_features())
+        self.featureExtractor = FeatureExtractor(self.selected_features_list, self.extracted_features_path)
         x, y = self.featureExtractor()
         self.initialize_model(model, x, y, analysis=False)
         print('Map Objects Classifier using {} and {} features is Ready'.format(model.name, features.name))
@@ -45,7 +44,7 @@ class MapObjectsClassifier:
                     probability=dict(background=probability[0], building=probability[1], water=probability[2]))
 
     def initialize_model(self, model, x, y, analysis=False):
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.35, random_state=42, stratify=y)
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42, stratify=y)
         self.scaler = preprocessing.StandardScaler().fit(x_train)
         if model == Models.RANDOMFOREST:
             self.clf = RandomForestClassifier(class_weight='balanced', max_depth=8, n_estimators=300)

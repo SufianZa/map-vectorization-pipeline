@@ -2,15 +2,14 @@ import uuid
 from threading import Thread
 
 from flask import Flask, render_template, abort, Response
-from flask import redirect, request, jsonify, url_for
+from flask import request
 import os
-import matplotlib.pyplot as plt
 import json
 import time
 import global_variables
 from pathlib import Path
 
-from pipeline.run_pipeline import PipelineThread
+from pipeline.run_pipeline import Pipeline
 
 # start flask application
 app = Flask(__name__)
@@ -19,6 +18,8 @@ app._static_folder = os.path.abspath("templates/static/")
 
 # use to clean the dir
 pipelinesStack = dict()
+
+
 def clearDir(uuid):
     del pipelinesStack[uuid]
     for file in global_variables.temp_path.glob('{}_*.*'.format(uuid)):
@@ -52,25 +53,27 @@ def generate():
     # generate random uuid
     gen_id = str(uuid.uuid1())
     name, format = data.filename.split('.')
+
     # check for png format
-    if str(format).lower() != 'png': abort(Response('The uploaded image should be only in png format '))
+    if str(format).lower() != 'png':
+        abort(Response('The uploaded image should be only in png format '))
 
     path = os.path.join(global_variables.temp_path, '{}_img.'.format(gen_id) + 'png')
     data.save(path)
 
-    def run_in_background(value):
+    def run_pipeline_in_background(value):
         time.sleep(value)
-        pipe = PipelineThread()
-        pipelinesStack[gen_id] = pipe
-        print(pipelinesStack)
-        pipe.run(path, gen_id, dict(webapp=True,
-                                    method=method,
-                                    factor=param,
-                                    extract_contour=extract_contours,
-                                    sensitivity=sensitivity,
-                                    douglas=douglas))
+        pipeline = Pipeline()
+        pipelinesStack[gen_id] = pipeline
 
-    pipelineThread = Thread(target=run_in_background, kwargs={'value': request.args.get('value', 1)})
+        pipeline.run_pipeline(path, gen_id, **dict(webapp=True,
+                                                   method=method,
+                                                   factor=param,
+                                                   extract_contour=extract_contours,
+                                                   sensitivity=sensitivity,
+                                                   douglas=douglas))
+
+    pipelineThread = Thread(target=run_pipeline_in_background, kwargs={'value': request.args.get('value', 1)})
     pipelineThread.start()
     return render_template('layouts/processing.html', uuid=gen_id)
 

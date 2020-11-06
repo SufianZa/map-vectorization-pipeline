@@ -1,13 +1,8 @@
 import cv2
-import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
 from scipy import ndimage as ndi
 from skimage.feature import peak_local_max
 from skimage.segmentation import watershed
-from skimage.morphology import skeletonize, thin
-
-from skimage.morphology import binary_closing
 
 
 def watershed_transform(image, distance_transform, sensitivity):

@@ -24,7 +24,7 @@ from pipeline.utils import mad, RGB2HEX
 
 class FeaturesType(enum.Enum):
     """
-    Enum class to define types of feature and extract set of all/selected features
+    Enum class to define types of features and extract a set of all or selected features
     """
     SPECTRAL = 1
     SHAPE = 2
@@ -54,17 +54,17 @@ class FeaturesType(enum.Enum):
 
 class FeatureExtractor:
     """
-    This class extract spectral and shape features from images
+    FeatureExtractor extracts spectral and shape features from images and polygons
     """
 
     def __init__(self, selected_features, path, intensity_threshold=0.3):
         """
         The initialization consists of loading or extracting features
-        selected_features: array
+        :param selected_features: array
             the indices selected features
-        path: str
+        :param path: str
             the path to load/save features
-        intensity_threshold: float
+        :param intensity_threshold: float
            threshold to discard pixels with lower or equal intensity
         """
         self.INTENSITY_THRESHOLD = intensity_threshold
@@ -147,10 +147,17 @@ class FeatureExtractor:
         with open(self.path, "wb") as f:
             pkl.dump({'x': x, 'y': y}, f)
 
-    def get_selected_features(self, featuresList):
+    def get_selected_features(self, select_features):
+        """
+        get a subset of selected features
+        :param select_features: list
+            list of indices of selected features
+        :return ndarray
+            the selected features of all data points
+        """
         selected_x = []
         for feature in self.x:
-            selected_x.append(feature[featuresList])
+            selected_x.append(feature[select_features])
         return selected_x
 
     def load_features(self):
@@ -218,15 +225,16 @@ class FeatureExtractor:
 
     def extract_features_from_polygon(self, image, poly_mask, poly, map_contours):
         """
-            Extracts selected shape and spectral features from polygon to predict
+        Extracts selected shape and spectral features from polygon to predict
 
-            image: ndarray
+        :param image: ndarray
                 RGB input map image
-            poly_mask: ndarray
+        :param poly_mask: ndarray
                 binary mask  of the polygon
-            poly: shapely polyon object
+        :param poly: shapely polyon object
                 binary mask  of the polygon
-            map_contours: list of map outer contour points
+        :param  map_contours: list of map outer contour points
+        :return feature vector representation of a polygon
         """
         # cut slice from image and exclude black pixels
         ones = np.argwhere(poly_mask)
@@ -248,10 +256,11 @@ class FeatureExtractor:
 
 def visualize_features(x, y):
     """
-        Use PCA dimensionality reduction to visualize the features in 2d space
-        X: ndarray
-            feature vector
-        y: array
+    Use PCA dimensionality reduction to visualize the features in 2d space
+
+    :param x: ndarray
+           array of n-d feature vectors
+    :param y: array
             labels
     """
     targets = list(global_variables.visualize_colors.keys())
@@ -296,6 +305,7 @@ def get_spectral_features(reshape):
 
     :param reshape: ndarray
         image vector in HSV space
+    :return 16-d feature descriptor
      """
     return np.hstack((np.median(reshape, axis=0), mad(reshape, axis=0), np.mean(reshape, axis=0),
                       skew(reshape, axis=0), np.std(reshape, axis=0)))
@@ -313,6 +323,8 @@ def get_shape_features(polygon, map_contours):
 
         :param polygon: shapely polygon object
         :param map_contours: list of map outer contour points
+
+        :return 6-d feature descriptor
     """
     map_poly = splyG.Polygon(np.squeeze(map_contours)).simplify(3)
     rect = polygon.minimum_rotated_rectangle

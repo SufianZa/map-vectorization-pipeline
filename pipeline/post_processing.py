@@ -1,27 +1,14 @@
-import geojson
 import cv2
 import numpy as np
-import matplotlib.pyplot as plt
 from skimage import exposure
-from PIL import Image
 from skimage.morphology import binary_closing
-from skimage.transform import probabilistic_hough_line
-from skimage import draw
-from skimage.morphology import skeletonize
-import time
 from scipy import spatial
-from rdp import rdp, pldist
+from rdp import pldist
 import shapely.geometry as splyG
-from shapely_geojson import dump, Feature, FeatureCollection
-from scipy import ndimage as ndi
-import os
-
 from pipeline.map_object_classifier import MapObjectsClassifier
-from pipeline.utils import cropImage, glueImage
+from pipeline.utils import crop_image, glue_image
 
 epsilon = 4
-min_poly_area = 1500
-max_poly_area = 300000
 
 
 def make_as_polygon(p1_big):
@@ -94,10 +81,10 @@ def douglas_peucker(contours, douglas):
 def morphological_closing(labels, label):
     label_segmented = np.zeros(labels.shape, dtype="uint8")
     label_segmented[labels == label] = 255
-    c_edges, top, bottom = cropImage(label_segmented)
+    c_edges, top, bottom = crop_image(label_segmented)
     inner_region_closed = binary_closing(c_edges)
     neighboring_labels = labels[top[0]:bottom[0] + 20, top[1]:bottom[1] + 20]
-    return glueImage(inner_region_closed, label_segmented, top, bottom), neighboring_labels
+    return glue_image(inner_region_closed, label_segmented, top, bottom), neighboring_labels
 
 
 def get_candidate_point(a, b, point, threshhold, mid_point=False):
@@ -116,7 +103,7 @@ def get_candidate_point(a, b, point, threshhold, mid_point=False):
         return None
 
 
-def merge_lines_with_points(poly_1, poly_2, threshold=5.):
+def snap_nearest_point_to_line(poly_1, poly_2, threshold=5.):
     aux_poly_2 = []
     aux_poly_1 = poly_1.copy()
     for idx2, a in enumerate(poly_2):
@@ -130,7 +117,7 @@ def merge_lines_with_points(poly_1, poly_2, threshold=5.):
     return poly_1, np.array(aux_poly_2)
 
 
-def merge_nearest_points_efficent(poly_1, poly_2, size=5):
+def snap_nearest_points(poly_1, poly_2, size=5):
     poly_tree = spatial.KDTree(np.vstack((poly_1, poly_2)))
     pairs_points = poly_tree.query_pairs(size)
     for a, b in pairs_points:
@@ -147,13 +134,13 @@ def merge_nearest_points_efficent(poly_1, poly_2, size=5):
     return poly_1, poly_2
 
 
-def snapping_polygons(polygon_points):
+def polygons_snapping(polygon_points):
     for label, zip_and_pts in polygon_points.items():
         poly_1 = np.array(list(polygon_points[label]['points']))
         for zipper_label in zip_and_pts['neighboring_labels']:
             poly_2 = np.array(list(polygon_points[zipper_label]['points']))
-            poly_2, poly_1 = merge_lines_with_points(poly_2, poly_1, method_parameter)
-            poly_1, poly_2 = merge_nearest_points_efficent(poly_1, poly_2, method_parameter)
+            poly_2, poly_1 = snap_nearest_point_to_line(poly_2, poly_1, method_parameter)
+            poly_1, poly_2 = snap_nearest_points(poly_1, poly_2, method_parameter)
             try:
                 polygon_points[zipper_label]['neighboring_labels'].remove(label)
             except:
@@ -163,15 +150,40 @@ def snapping_polygons(polygon_points):
     return polygon_points, None
 
 
-def post_processing(labels, color_classifier: MapObjectsClassifier, img, method, param, douglas, contours_extract=True):
+def post_processing(labels, map_object_classifier: MapObjectsClassifier, input_image, method, param, douglas,
+                    contours_extract=True):
+    """
+    refines the polygons
+    :param labels:
+        image after watershed segmentation where each segment is identified by a unique id
+    :param map_object_classifier:
+        an instance of  the Map Objects Classifier
+    :param input_image:
+        the original input image
+    :param method: int
+        can be either 1 for using difference with enlarged polygons or 2 polygon snapping method
+    :param param: float
+        the parameter used for the "method" used
+    :param douglas:
+        the parameter of the Douglas-Peucker algorithm
+    :param contours_extract: bool
+        a flag to include or exclude contours in image
+    :return:
+    polygon_points: a dict of polygon points including the keys:
+        "points"                simple representation of sequence of points
+        "shapely_obj"           polygons as shapely objects
+        "neighboring_labels"    list of the labels of the neighboring polygons
+        "properties"            the classification of Map Object Classifier
+    contour_features: a shapely polygon object of contour features
+    """
     global method_parameter
     method_parameter = param
 
     # refine colors
     mask = labels.copy()
     mask[mask > 0] = 255
-    img = cv2.medianBlur(img, 5)
-    img = exposure.equalize_hist(img, mask=mask)
+    input_image = cv2.medianBlur(input_image, 5)
+    input_image = exposure.equalize_hist(input_image, mask=mask)
 
     contours_mask, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL,
                                         cv2.CHAIN_APPROX_SIMPLE)
@@ -199,7 +211,8 @@ def post_processing(labels, color_classifier: MapObjectsClassifier, img, method,
                                                            neighbor != label]
             polygon_points[label]['points'] = poly.exterior.coords
             polygon_points[label]['shapely_obj'] = poly
-            polygon_points[label]['properties'] = color_classifier.predict(img, closing, poly, contours_mask)
+            polygon_points[label]['properties'] = map_object_classifier.predict(input_image, closing, poly,
+                                                                                contours_mask)
 
     if method == 1:
         return difference_with_enlarged_polygons(polygon_points,
@@ -207,4 +220,4 @@ def post_processing(labels, color_classifier: MapObjectsClassifier, img, method,
                                                      contours_mask[0]),
                                                  contours_extract=contours_extract)
     elif method == 2:
-        return snapping_polygons(polygon_points)
+        return polygons_snapping(polygon_points)

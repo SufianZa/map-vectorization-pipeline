@@ -6,8 +6,8 @@ from skimage.morphology import binary_erosion
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import classification_report
 import global_variables
-from pipeline.run_pipeline import PipelineThread
-from pipeline.utils import cropImage
+from pipeline.run_pipeline import Pipeline
+from pipeline.utils import crop_image
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
@@ -22,8 +22,17 @@ class Evaluation:
         self.thresholds = thresholds
 
     def load_ground_truth(self, file_name, mask):
+        """
+        :param file_name: str
+            the name of the map to get the ground truth image
+        :param mask: ndarray
+            binary image of the map without background
+        :return: ndarray
+            ground_truth ndarray of ground truth polygons as mask without contours
+                labeled_classes ndarray of the classes labels after assigning each class to a number
+        """
         ground_truth = np.zeros_like(mask, dtype=np.uint8)
-        classes_img = np.zeros_like(mask, dtype=np.uint8)
+        labeled_classes = np.zeros_like(mask, dtype=np.uint8)
         for i, target_class in enumerate(global_variables.target_classes):
             if i != 0:  # exclude contour class
                 try:
@@ -32,12 +41,27 @@ class Evaluation:
                                      '{}-{}.png'.format(file_name, target_class))))[:, :, 0]
                 except:
                     continue
-                classes_img[class_mask.astype(bool)] = i
+                labeled_classes[class_mask.astype(bool)] = i
                 ground_truth = np.logical_or(ground_truth, class_mask)
         ground_truth = np.logical_and(ground_truth, mask)
-        return ground_truth.astype(np.uint8) * 255, classes_img
+        return ground_truth.astype(np.uint8) * 255, labeled_classes
 
     def evaluate(self, polygon_points, path, mask, min_a=1500, max_a=300000):
+        """
+        :param polygon_points: a dictionary of all polygons extracted including the keys:
+                "points"                simple representation of sequence of points
+                "shapely_obj"           polygons as shapely objects
+                "neighboring_labels"    list of the labels of the neighboring polygons
+                "properties"            the classification of Map Object Classifier
+        :param path: str or path
+            the path of full input map image
+        :param mask: ndarray
+            binary image of the map without background
+        :param min_a: int or float
+            minimum area to include in the evaluation
+        :param max_a: int or float
+            maximum area to include in the evaluation
+        """
         filename = os.path.basename(path)
         map_name = filename.split('.')[0]
         ground_truth_mask, labeled_classes = self.load_ground_truth(map_name, mask)
@@ -46,7 +70,8 @@ class Evaluation:
         filtered_gt = [gt_labels_unique[idx] for idx, l in enumerate(count_pixels.tolist()) if max_a > l > min_a]
         self.true_num += len(filtered_gt)
         for poly_p in polygon_points.values():
-            true_img, true_label, segment_id, pred_img, pred_label = self.matching_paris(gt_labels, poly_p, labeled_classes)
+            true_img, true_label, segment_id, pred_img, pred_label = self.matching_paris(gt_labels, poly_p,
+                                                                                         labeled_classes)
             pred_area = len(np.argwhere(pred_img))
             true_area = len(np.argwhere(true_img))
             if segment_id not in filtered_gt or true_label == 0 or min_a > pred_area or pred_area > max_a:
@@ -60,6 +85,17 @@ class Evaluation:
             self.results.loc[len(self.results)] = entry
 
     def IoU(self, true_img, pred_img, show=False):
+        """
+            Calculates the Intersection over Union using binary mask images and logical operations
+        :param true_img: ndarray
+            the ground truth polygon as mask
+        :param pred_img: ndarray
+            the predicted polygon as mask
+        :param show: bool
+            to show overlaying polygon in 3*1 Figure
+        :return: float
+            IoU score
+        """
         intersection = np.logical_and(true_img, pred_img)
         union = np.logical_or(true_img, pred_img)
         iou_score = np.sum(intersection) / np.sum(union)
@@ -69,9 +105,9 @@ class Evaluation:
             color_true_red[:, :, 0] = true_img
             color_pred_blue[:, :, 2] = pred_img
             overlay = cv2.addWeighted(color_true_red, 0.7, color_pred_blue, 0.3, 0)
-            c_overlay, _, _ = cropImage(overlay)
-            c_im1, _, _ = cropImage(color_true_red)
-            c_im2, _, _ = cropImage(color_pred_blue)
+            c_overlay, _, _ = crop_image(overlay)
+            c_im1, _, _ = crop_image(color_true_red)
+            c_im2, _, _ = crop_image(color_pred_blue)
             fig, (ax1, ax2, ax3) = plt.subplots(1, 3)
             ax1.imshow(c_im1)
             ax1.title.set_text('Ground Truth')
@@ -85,7 +121,12 @@ class Evaluation:
             plt.show()
         return iou_score
 
-    def show_results(self):
+    def geometrical_evaluation(self):
+        """
+        calculates the  'Precision', 'Recall', 'F1' and True Positives for different pre-defined thresholds (see self.thresholds)
+        - plot a figure of histogram distribution of IoU scores
+        - plot a figure of the correlation between the predicted area and its IoU scores
+        """
         print('#Aproximated Polygons {}'.format(self.pred_num))
         print('#Ground Truth Polygons {}'.format(self.true_num))
         data = []
@@ -127,17 +168,21 @@ class Evaluation:
         ax.set_ylabel('Area in Pixels')
         plt.show()
 
-    def evaluate_classisifation(self):
+    def map_objects_classifier_evaluation(self):
+        """
+        calculates the  'Precision', 'Recall', 'F1' and support for different classes to evaluate Map Objects
+        Classifier
+            - plot the confusion matrix of individual classes
+            - prints a classification report
+        """
         df = self.results[(self.results['iou'] > 0.7)]
         y_true = df['true_class']
         y_pred = df['pred_class']
         print(classification_report(y_true, y_pred))
-        # Get and reshape confusion matrix data
-
         matrix = confusion_matrix(y_true, y_pred)
         matrix = matrix.astype('float') / matrix.sum(axis=1)[:, np.newaxis]
         import seaborn as sns
-        # Build the plot
+
         plt.figure(figsize=(10, 7))
         sns.set(font_scale=2.4)
         sns.heatmap(matrix, annot=True, annot_kws={'size': 25},
@@ -155,6 +200,23 @@ class Evaluation:
         plt.show()
 
     def matching_paris(self, gt_labels, poly_p, classes_img):
+        """
+            Calculates the centroids of the predicted polygon to find the ground truth polygon in ground truth image
+        :param gt_labels: includes all segments/polygons in ground truth image as a unique number
+        :param poly_p: shapely object
+        :param classes_img: includes all classes in ground truth image as a unique number
+        :return:
+            true_img: ndarray
+                the ground truth polygon as mask
+            pred_img: ndarray
+                the predicted polygon as mask
+            segment_id: int
+                the assigned number of ground truth segment in gt_labels
+            true_label: str
+                the class of the ground truth polygon
+            pred_label: str
+                the class of the predicted polygon
+        """
         true_img = np.zeros_like(gt_labels, dtype=np.uint8)
         pred_img = np.zeros_like(gt_labels, dtype=np.uint8)
         center_pt = poly_p['shapely_obj'].representative_point()
@@ -171,8 +233,8 @@ class Evaluation:
 
 if __name__ == '__main__':
     evaluator = Evaluation()
-    pipeline = PipelineThread()
+    pipeline = Pipeline()
     for file_path in global_variables.test_full_maps.glob('*.*'):
         pipeline.run_pipeline(file_path, file_path, evaluator=evaluator)
-    evaluator.show_results()
-    evaluator.evaluate_classisifation()
+    evaluator.geometrical_evaluation()
+    evaluator.map_objects_classifier_evaluation()
